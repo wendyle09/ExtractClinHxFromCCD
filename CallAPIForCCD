@@ -1,0 +1,112 @@
+// Get patient's PId
+var IDs = source.getNode("Historical & Facility MRNs");
+messageCache.setValue('PatientId', StringUtils.substringBefore(IDs, '^'));
+messageCache.setValue('PID', StringUtils.substringAfter(IDs, '^'));
+
+var parameterMap = qie.newParameterMap();
+
+// different values for parameters:
+
+// DataInclusionType
+// ACTIVE_SIGNED_PATIENT
+// ACTIVE_SIGNED_PATIENT_AND_INACTIVE_SIGNED_PATIENT
+// ACTIVE_SIGNED_PATIENT_AND_ACTIVE_UNSIGNED_DOCUMENT
+// ACTIVE_SIGNED_DOCUMENT_AND_ACTIVE_UNSIGNED_DOCUMENT
+// ACTIVE_SIGNED_DOCUMENT_AND_INACTIVE_SIGNED_DOCUMENT
+// ACTIVE_INACTIVE_SIGNED_UNSIGNED_PATIENT
+
+// DocumentTemplate
+// CLINICAL_DOCUMENT
+// CONTINUITY_OF_CARE_DOCUMENT
+// PROGRESS_NOTE_DOCUMENT
+
+// ExportInterval
+// LATEST
+// ONE_MONTH
+// THREE_MONTHS
+// SIX_MONTHS
+// ONE_YEAR
+// THREE_YEARS
+// FIVE_YEARS
+// TEN_YEARS
+// ALL
+
+var soapEnvelope = qie.evaluateTemplate("<!-- Service='Centricity SOAP cda ws' Binding='ClinicalDocumentWebserviceImplServiceSoapBinding' Operation='GetClinicalDocument' Date='2014-05-07 08:25:16.220' -->\n" +
+   "<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:cda=\"http://cda.ws.cp.gehcit.com/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">\n" +
+   "   <soapenv:Header xmlns:wsa=\"http://www.w3.org/2005/08/addressing\">\n" +
+   "      <wsa:To>%%ENDPOINT_URL%%</wsa:To>\n" +
+   "      <wsa:Action></wsa:Action>\n" +
+   "      <wsse:Security xmlns:wsse=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd\" xmlns:wsu=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd\" soapenv:mustUnderstand=\"1\">\n" +
+   "         <wsse:UsernameToken wsu:Id=\"UsernameToken-2\">\n" +
+   "            <wsse:Username>{ws-user:" + channelCache.getValue("wsName") + "}</wsse:Username>\n" +
+   "            <wsse:Password Type=\"http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText\">{ws-pass:" + channelCache.getValue("wsName") + "}</wsse:Password>\n" +
+   "         </wsse:UsernameToken>\n" +
+   "         <wsu:Timestamp wsu:Id=\"TS-1\">\n" +
+   "            <wsu:Created>{UTC_DATE[yyyy-MM-dd'T'HH:mm:ss.SSS'Z']}</wsu:Created>\n" +
+   "            <wsu:Expires>{UTC_DATE+5m[yyyy-MM-dd'T'HH:mm:ss.SSS'Z']}</wsu:Expires>\n" +
+   "         </wsu:Timestamp>\n" +
+   "      </wsse:Security>\n" +
+   "   </soapenv:Header>\n" +
+   "   <soapenv:Body>\n" +
+   "      <cda:GetClinicalDocument>\n" +
+   "         <!--Optional:-->\n" +
+   "         <clinicalDocumentExportRequest>\n" +
+   "            <PatientId>"+messageCache.getValue('PID')+"</PatientId>\n" +
+   "            <!--Optional:-->\n" +
+   "            <!--<DocumentId>##SDID##</DocumentId>-->\n" +
+   "            <!--Optional:-->\n" +
+   "            <DataInclusionType>ACTIVE_SIGNED_PATIENT</DataInclusionType>\n" +
+   "            <!--Optional:-->\n" +
+   "            <DocumentTemplate>CONTINUITY_OF_CARE_DOCUMENT</DocumentTemplate>\n" +
+   "            <!--Optional:-->\n" +
+   "            <IncludeSectionNarrative>true</IncludeSectionNarrative>\n" +
+   "            <!--Optional:-->\n" +
+   "            <SectionTemplatesInclude>\n" +
+   "               <!--Zero or more repetitions:-->\n" +
+   "               <SectionTemplate>GENERAL_OBSERVATIONS</SectionTemplate>\n" +
+   "            </SectionTemplatesInclude>\n" +
+   "            <!--Optional:-->\n" +
+   "            <SectionRequestParameters>\n" +
+   "               <!--Zero or more repetitions:-->\n" +
+   // "               <CDASectionRequestParameter xmlns:q2=\"http://cda.ws.cp.gehcit.com/\" xsi:type=\"q2:GeneralObservationsSectionRequestParameter\">\n" +
+   // "                  <ExportInterval>THREE_YEARS</ExportInterval>\n" +
+   // "               </CDASectionRequestParameter>\n" +
+   "               <!--<CDASectionRequestParameter>-->\n" +
+   "                  <!--Optional:-->\n" +
+   "                  <!--<DataInclusionType>ACTIVE_SIGNED_PATIENT</DataInclusionType>-->\n" +
+   "                  <!--Optional:-->\n" +
+   "                  <!--<ExcludeAllData>false</ExcludeAllData>-->\n" +
+   "               <!--</CDASectionRequestParameter>-->\n" +
+   "            </SectionRequestParameters>\n" +
+   "         </clinicalDocumentExportRequest>\n" +
+   "      </cda:GetClinicalDocument>\n" +
+   "   </soapenv:Body>\n" +
+   "</soapenv:Envelope>", parameterMap, "xml", qie.getWsEndpointUrl(channelCache.getValue("wsName")));
+
+var value = '';
+// Call API for CCD
+// If call times out, wait and try again
+try {
+   value = qie.callSOAPWebService(
+      channelCache.getValue("wsName"),
+      "ClinicalDocumentWebserviceImplServiceSoapBinding",
+      "GetClinicalDocument",
+      soapEnvelope,
+      false,
+      parameterMap,
+      60000);
+}
+catch (err) {
+   qie.pause(90000);
+   value = qie.callSOAPWebService(
+      channelCache.getValue("wsName"),
+      "ClinicalDocumentWebserviceImplServiceSoapBinding",
+      "GetClinicalDocument",
+      soapEnvelope,
+      false,
+      parameterMap,
+      60000);
+}
+var msg = qie.parseXMLString(value);
+var fixedBytes = msg.getNode('//return/ClinicalDocumentBytes');
+message = qie.createXMLMessage(qie.base64Decode(fixedBytes));
