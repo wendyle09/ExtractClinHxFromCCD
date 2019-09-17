@@ -1,0 +1,33 @@
+// Extract GE General Observations section
+var section = qie.parseXMLString(source.getNode('/ClinicalDocument/component/structuredBody/component[section/templateId/@root="1.2.840.113619.21.3.2529"]/section'));
+
+// Create arrays of obs HDIDs to extract
+var aryHDIDs = StringUtils.splitByWholeSeparator(channelCache.getValue('SH/PMH/PSH/FH'), ',');
+
+// Retrieve most recent past medical hx observation element
+var aryObsSH = section.getAllNodes('/section/entry[observation/code[@codeSystem="1.2.840.113619.21.3.2527"]/@code="' + aryHDIDs[0] + '"]/observation');
+if (aryObsSH.length > 0) {
+   var obsSH = qie.parseXMLString(aryObsSH[aryObsSH.length - 1]);
+   messageCache.setValue('SH', '~' + obsSH.getNode('/observation/value'));
+}
+
+// Retrieve most recent past surgical hx observation element
+var aryObsPMH = section.getAllNodes('/section/entry[observation/code[@codeSystem="1.2.840.113619.21.3.2527"]/@code="' + aryHDIDs[1] + '"]/observation');
+if (aryObsPMH.length > 0) {
+   var obsPMH = qie.parseXMLString(aryObsPMH[aryObsPMH.length - 1]);
+   messageCache.setValue('PMH', '~' + obsPMH.getNode('/observation/value'));
+}
+
+// Retrieve most recent family hx observation element
+var aryObsPSH = section.getAllNodes('/section/entry[observation/code[@codeSystem="1.2.840.113619.21.3.2527"]/@code="' + aryHDIDs[2] + '"]/observation');
+if (aryObsPSH.length > 0) {
+   var obsPSH = qie.parseXMLString(aryObsPSH[aryObsPSH.length - 1]);
+   messageCache.setValue('PSH', '~' + obsPSH.getNode('/observation/value'));
+}
+
+// Retrieve most recent family hx observation element
+var aryObsFH = section.getAllNodes('/section/entry[observation/code[@codeSystem="1.2.840.113619.21.3.2527"]/@code="' + aryHDIDs[3] + '"]/observation');
+if (aryObsFH.length > 0) {
+   var obsFH = qie.parseXMLString(aryObsFH[aryObsFH.length - 1]);
+   messageCache.setValue('FH', '~' + obsFH.getNode('/observation/value'));
+}
