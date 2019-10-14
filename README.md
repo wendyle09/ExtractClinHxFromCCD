@@ -1,5 +1,5 @@
 # ExtractClinHxFromCCD
-Extract clinical history from CCD in XML format
+Extract clinical history from CCD in XML format using Qvera Interface Engine
 
 ## Objective
 As part of a data migration from Centricity to Epic, a text summary of the patient's clinical history was requested by clinicians since it cannot be converted as discrete data.
